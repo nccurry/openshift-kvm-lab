@@ -1,0 +1,14 @@
+- name: Restart dnsmasq
+  systemd:
+    name: dnsmasq
+    state: restarted
+
+- name: Restart firewalld
+  systemd:
+    name: firewalld
+    state: restarted
+
+- name: Restart nfs-server
+  systemd:
+    name: nfs-server
+    state: restarted

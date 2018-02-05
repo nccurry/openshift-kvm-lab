@@ -1,0 +1,47 @@
+---
+# - hosts: all
+#   become: yes
+#   gather_facts: no
+#   tasks:
+#   - name: Unsubscribe nodes from RHSM
+#     when: "{{ ansible_distribution }}" == "Red Hat Enterprise Linux"
+
+- hosts: localhost
+  become: no
+  gather_facts: no
+  vars:
+    host_dir: "../.hosts"
+    host_image_dir: "../.images"
+  vars_files:
+  - ../vars/environment.yml
+  tasks:
+  - name: Get current list of vms
+    shell: virsh --connect=qemu:///system list
+    changed_when: false
+    register: vm_list
+
+  - name: Stop vms
+    shell: "virsh --connect=qemu:///system destroy --domain {{ item.key }}"
+    when: vm_list.stdout | search(item.key)
+    with_dict: "{{ nodes }}"
+
+  - name: Undefine vms
+    shell: "virsh --connect=qemu:///system undefine --domain {{ item.key }}"
+    when: vm_list.stdout | search(item.key)
+    with_dict: "{{ nodes }}"
+
+  - name: Get current list of networks
+    shell: virsh --connect=qemu:///system net-list
+    changed_when: false
+    register: net_list
+
+  - name: Stop and delete network
+    block:
+    - shell: "virsh --connect=qemu:///system net-destroy {{ network.name }}"
+    - shell: "virsh --connect=qemu:///system net-undefine {{ network.name }}"
+    when: net_list.stdout | search(network.name)
+
+  - name: Delete files
+    file:
+      state: absent
+      path: "{{ playbook_dir }}/vms"

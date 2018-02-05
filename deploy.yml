@@ -1,0 +1,21 @@
+---
+- import_playbook: playbooks/provision_vms.yml
+
+- hosts: all
+  become: yes
+  gather_facts: no
+  strategy: free
+  vars_files:
+  - vars/environment.yml
+  roles:
+  - ssh
+  tasks:
+  - name: Bootstrap ansible host
+    include_role:
+      name: ansible_host
+    when: inventory_hostname == '10.0.10.10'
+
+  - name: Bootstrap cluster hosts
+    include_role:
+      name: cluster_host
+    when: inventory_hostname != '10.0.10.10'

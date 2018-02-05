@@ -1,0 +1,39 @@
+host_image:
+  name: CentOS-Atomic-Host-7.1801-02-GenericCloud.qcow2
+  url: https://cloud.centos.org/centos/7/atomic/images/CentOS-Atomic-Host-7.1801-02-GenericCloud.qcow2
+  checksum: sha256:6733e5af8b995006778a7431615d1b9387d86c9c9e6f04553faff22ce84f0f2e
+user: admin
+network:
+  name: ocp.lab
+  forward_interface: wlp4s0
+  bridge_name: virbr1
+  mac: 52:54:00:aa:dc:1c
+  ip: 10.0.10.1
+  netmask: 255.255.255.0
+  dhcp_start: 10.0.10.10
+  dhcp_end: 10.0.10.20
+nodes:
+  ans.ocp.lab:
+    ip: 10.0.10.10
+    mac: 52:54:00:6c:3c:01
+    memory: 2048
+    cpus: 1
+    extra_disk_size: 50G
+  mas.ocp.lab:
+    ip: 10.0.10.11
+    mac: 52:54:00:0c:c2:9c
+    memory: 4096
+    cpus: 1
+    extra_disk_size: 5G
+  inf.ocp.lab:
+    ip: 10.0.10.12
+    mac: 52:54:00:07:ae:0a
+    memory: 8196
+    cpus: 1
+    extra_disk_size: 5G
+  app.ocp.lab:
+    ip: 10.0.10.13
+    mac: 52:54:00:3a:d1:62
+    memory: 2048
+    cpus: 1
+    extra_disk_size: 5G

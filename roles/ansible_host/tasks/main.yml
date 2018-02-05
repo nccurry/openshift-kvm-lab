@@ -1,0 +1,107 @@
+- name: Update packages
+  yum: 
+    name: "*"
+    state: latest
+
+- name: Download required packages
+  yum:
+    state: present
+    name: "{{ item }}"
+  with_items: "{{ packages }}"
+
+- name: Start/enable services
+  systemd:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+  - nfs-server
+  - dnsmasq
+
+- name: Create NFS export directory
+  file:
+    state: directory
+    owner: nfsnobody
+    group: nfsnobody
+    mode: 0777
+    path: "{{ nfs.export_dir }}"
+
+- name: Create NFS export subdirectories
+  file:
+    state: directory
+    owner: nfsnobody
+    group: nfsnobody
+    mode: 0777
+    path: "{{ item.mountpath }}"
+  with_items: "{{ nfs.exports }}"
+
+- name: Create logical volume group for nfs exports
+  lvg:
+    pvs: "{{ nfs.pv }}"
+    state: present
+    vg: "{{ nfs.vg }}"
+
+- name: Create logical volumes for nfs exports
+  lvol:
+    vg: "{{ nfs.vg }}"
+    size: "{{ item.size }}"
+    lv: "{{ item.lv }}"
+  with_items: "{{ nfs.exports }}"
+
+- name: Format filesystems for nfs exports
+  filesystem:
+    dev: "/dev/mapper/{{ nfs.vg }}-{{ item.lv }}"
+    fstype: "{{ item.fstype }}"
+  with_items: "{{ nfs.exports }}"
+
+- name: Mount nfs exports
+  mount:
+    state: mounted
+    path: "{{ item.mountpath }}"
+    src: "/dev/mapper/{{ nfs.vg }}-{{ item.lv }}"
+    fstype: "{{ item.fstype }}"
+    opts: "{{ item.mountopts }}"
+  with_items: "{{ nfs.exports }}"
+
+- name: Create /etc/exports
+  copy:
+    dest: /etc/exports
+    src: files/exports
+    mode: 0664
+  notify:
+  - Restart nfs-server
+
+- name: Create dnsmasq configuration
+  copy:
+    src: files/dnsmasq.conf
+    dest: /etc/dnsmasq.conf
+    backup: yes
+  notify:
+  - Restart dnsmasq
+
+- name: Create /etc/hosts
+  copy:
+    src: files/etc-hosts
+    dest: /etc/hosts
+    backup: yes
+
+- name: Create OpenShift hosts file
+  copy:
+    src: files/ocp_hosts
+    dest: "/home/{{ user }}/hosts"
+    owner: "{{ user }}"
+    group: "{{ user }}"
+    mode: 0664
+
+# - name: Open ports
+#   firewalld:
+#   service: "{{ item }}"
+#   permanent: true
+#   state: enabled
+#   with_items:
+#   - dns
+#   - nfs
+#   - mountd
+#   - rpc-bind
+#   notify:
+#   - Restart firewalld

@@ -1,0 +1,8 @@
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+10.0.10.10 ans ans.ocp.lab
+10.0.10.11 mas mas.ocp.lab
+10.0.10.12 inf inf.ocp.lab
+10.0.10.13 app app.ocp.lab
+10.0.10.11 ocp.ocp.lab
+10.0.10.11 int-ocp.ocp.lab

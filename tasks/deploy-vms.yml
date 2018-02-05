@@ -1,0 +1,121 @@
+---
+- name: Download host image
+  get_url:
+    url: "{{ host_image.url }}"
+    dest: "{{ playbook_dir }}/images/{{ host_image.name }}"
+    checksum: "{{ host_image.checksum }}"
+  when: host_image.download
+
+- name: Create directories for vms
+  file:
+    state: directory
+    path: "{{ playbook_dir }}/vms/{{ item.key }}"
+  with_dict: "{{ nodes }}"
+
+- name: Ensure ssh keypair doesn't already exist
+  stat:
+    path: "{{ playbook_dir }}/vms/id_rsa"
+  register: id_rsa_stat
+
+- name: Generate ssh key
+  command: "ssh-keygen -b 2048 -t rsa -f {{ playbook_dir }}/vms/id_rsa -q -N ''"
+  when: not id_rsa_stat.stat.exists
+
+- name: Store key values for cloud-init
+  set_fact: 
+    id_rsa_pub: "{{ lookup('file', './vms/id_rsa.pub') }}"
+    id_rsa: "{{ lookup('file', './vms/id_rsa') }}"
+
+- name: Check existing base disks
+  stat:
+    path: "{{ playbook_dir }}/vms/{{ item.key }}/{{ item.key }}.qcow2"
+  with_dict: "{{ nodes }}"
+  register: disk_stats
+
+- name: Clone base os disks
+  copy:
+    src: "{{ playbook_dir }}/images/{{ host_image.name }}"
+    dest: "{{ playbook_dir }}/vms/{{ item.key }}/{{ item.key }}.qcow2"
+  with_items: "{{ disk_stats.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
+
+- name: Check existing meta-data files for cloud-init
+  stat:
+    path: "{{ playbook_dir }}/vms/{{ item.key }}/meta-data"
+  with_dict: "{{ nodes }}"
+  register: metadata_stats
+
+- name: Generate meta-data files for cloud-init
+  template:
+    src: templates/meta-data.j2
+    dest: "{{ playbook_dir }}/vms/{{ item.key }}/meta-data"
+  with_items: "{{ metadata_stats.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
+
+- name: Check existing user-data files for cloud-init
+  stat:
+    path: "{{ playbook_dir }}/vms/{{ item.key }}/user-data"
+  with_dict: "{{ nodes }}"
+  register: userdata_stats
+
+- name: Generate user-data files for cloud-init
+  template:
+    src: templates/user-data.j2
+    dest: "{{ playbook_dir }}/vms/{{ item.key }}/user-data"
+  with_items: "{{ userdata_stats.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
+
+- name: Check existing cidata.iso files for cloud-init
+  stat:
+    path: "{{ playbook_dir }}/vms/{{ item.key }}/cidata.iso"
+  with_dict: "{{ nodes }}"
+  register: cidataiso_stats
+
+- name: Generate cloud-init isos
+  command: "genisoimage -output {{ playbook_dir }}/vms/{{ item.key }}/cidata.iso -volid cidata -joliet -rock {{ playbook_dir }}/vms/{{ item.key }}/user-data {{ playbook_dir }}/vms/{{ item.key }}/meta-data"
+  with_items: "{{ cidataiso_stats.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
+
+- name: Check existing network.xml file
+  stat:
+    path: "{{ playbook_dir }}/vms/network.xml"
+  register: network_stat
+
+- name: Generate vm network xml
+  template:
+    src: templates/network.xml.j2
+    dest: "{{ playbook_dir }}/vms/network.xml"
+  when: not network_stat.stat.exists
+
+- name: Check to see if network exists
+  shell: virsh --connect=qemu:///system net-list
+  changed_when: false
+  register: net_list
+
+- name: Create vm network
+  block:
+  - shell: "virsh --connect=qemu:///system net-define --file {{ playbook_dir }}/vms/network.xml"
+  - shell: "virsh --connect=qemu:///system net-autostart --network {{ network.name }}"
+  - shell: "virsh --connect=qemu:///system net-start {{ network.name }}"
+  when: not net_list.stdout | search(network.name)
+
+- name: Check if vms exist
+  shell: virsh --connect=qemu:///system list
+  changed_when: false
+  register: vm_list
+
+- name: Create vms
+  shell: "virt-install --connect qemu:///system --name {{ item.key }} --memory {{ item.value.memory }} --vcpus {{ item.value.cpus }} --import --os-type=linux --os-variant rhel7 --disk {{ playbook_dir}}/vms/{{ item.key }}/{{ item.key }}.qcow2,format=qcow2,bus=virtio --disk {{ playbook_dir}}/vms/{{ item.key }}/cidata.iso,device=cdrom --network bridge={{ network.bridge_name }},mac={{ item.value.mac }} --graphics none --noautoconsole"
+  when: not vm_list.stdout | search(item.key)
+  with_dict: "{{ nodes }}"
+
+- name: Check existing vm disks
+  stat:
+    path: "{{ playbook_dir }}/vms/{{ item.key }}/{{ item.key }}-disk-{{ item.value.extra_disk_size }}.img"
+  with_dict: "{{ nodes }}"
+  register: extradisk_stats
+
+- name: Create disks
+  shell: "qemu-img create -f raw {{ playbook_dir }}/vms/{{ item.key }}/{{ item.key }}-disk-{{ item.value.extra_disk_size }}.img {{ item.value.extra_disk_size }}"
+  with_items: "{{ extradisk_stats.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
+
+  # Probably should check seperately with 'virsh --connect=qemu:///system domblklist --domain ans.lab.local' for this instead of using the presence of the disk on file... YAGNI?
+- name: Attach disks to vms
+  shell: "virsh --connect=qemu:///system attach-disk {{ item.key }} --source {{ playbook_dir }}/vms/{{ item.key }}/{{ item.key }}-disk-{{ item.value.extra_disk_size }}.img --target vdb --persistent"
+  with_items: "{{ extradisk_stats.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"

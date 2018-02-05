@@ -1,0 +1,32 @@
+---
+- name: Copy ssh private key
+  copy:
+    src: "{{ host_dir }}/id_rsa"
+    dest: "/home/{{ user }}/.ssh/id_rsa"
+    mode: 0600
+    owner: "{{ user }}"
+    group: "{{ user }}"
+
+- name: Copy ssh public key
+  copy:
+    src: "{{ host_dir }}/id_rsa.pub"
+    dest: "/home/{{ user }}/.ssh/id_rsa.pub"
+    mode: 0600
+    owner: "{{ user }}"
+    group: "{{ user }}"
+
+# TODO: Fix hardcoded reference to ../.hosts
+- name: Add key to authorized_keys
+  lineinfile: 
+    path: "/home/{{ user }}/.ssh/authorized_keys"
+    line: "{{ lookup('file', '../.hosts/id_rsa.pub') }}"
+
+- name: Create ssh config file
+  copy:
+    src: files/config
+    dest: "/home/{{ user }}/.ssh/config"
+    mode: 0600
+    owner: "{{ user }}"
+    group: "{{ user }}"
+  notify: 
+  - Restart sshd

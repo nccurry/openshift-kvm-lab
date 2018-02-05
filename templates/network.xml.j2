@@ -1,0 +1,17 @@
+<network>
+  <name>{{ network.name }}</name>
+  <forward dev='{{ network.forward_interface }}' mode='nat'>
+    <interface dev='{{ network.forward_interface }}'/>
+  </forward>
+  <bridge name='{{ network.bridge_name }}' stp='on' delay='0'/>
+  <mac address='{{ network.mac }}'/>
+  <domain name='ocp.lab'/>
+  <ip address='{{ network.ip }}' netmask='{{ network.netmask }}'>
+    <dhcp>
+    <range start='{{ network.dhcp_start }}' end='{{ network.dhcp_end }}'/>
+    {% for node_name, node in nodes.iteritems() %}
+      <host mac='{{ node.mac }}' name='{{ node_name }}' ip='{{ node.ip }}'/>
+    {% endfor %}
+    </dhcp>
+  </ip>
+</network>               

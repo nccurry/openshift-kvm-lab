@@ -1,0 +1,13 @@
+packages:
+- wget 
+- git 
+- net-tools 
+- bind-utils 
+- iptables-services 
+- bridge-utils 
+- bash-completion 
+- kexec-tools 
+- sos 
+- psacct
+- centos-release-openshift-origin
+- atomic-openshift-utils

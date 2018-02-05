@@ -1,0 +1,104 @@
+[OSEv3:children]
+masters
+nodes
+etcd
+
+[OSEv3:vars]
+ansible_ssh_user={{ lookup('env', 'USER') }}
+ansible_become=yes
+debug_level=2
+openshift_deployment_type=origin
+openshift_disable_check=disk_availability,docker_storage,memory_availability
+openshift_install_examples=true
+oreg_url=registry.access.redhat.com/openshift3/ose-${component}:v3.7
+openshift_master_identity_providers=[{'name': 'allow_all', 'login': 'true', 'challenge': 'true', 'kind': 'AllowAllPasswordIdentityProvider'}]
+openshift_master_cluster_method=native
+openshift_master_cluster_hostname=int-ocp.lab.local
+openshift_master_cluster_public_hostname=ocp.lab.local
+openshift_master_default_subdomain=apps.ocp.lab.local
+osm_default_node_selector='region=primary'
+
+openshift_hosted_router_selector='region=infra'
+openshift_hosted_router_replicas=1
+
+openshift_hosted_registry_selector='region=infra'
+openshift_hosted_registry_replicas=1
+openshift_hosted_registry_storage_kind=nfs
+openshift_hosted_registry_storage_access_modes=['ReadWriteMany']
+openshift_hosted_registry_storage_host=ans.lab.local
+openshift_hosted_registry_storage_nfs_directory=/ocp_exports
+openshift_hosted_registry_storage_volume_name=registry
+openshift_hosted_registry_storage_volume_size=5Gi
+
+openshift_metrics_install_metrics=true
+openshift_metrics_storage_kind=nfs
+openshift_metrics_storage_access_modes=['ReadWriteOnce']
+openshift_metrics_storage_host=ans.lab.local
+openshift_metrics_storage_nfs_directory=/ocp_exports
+openshift_metrics_storage_volume_name=metrics
+openshift_metrics_storage_volume_size=5Gi
+openshift_metrics_storage_labels={'storage': 'metrics'}
+
+openshift_logging_install_logging=true
+openshift_logging_storage_kind=nfs
+openshift_logging_storage_access_modes=['ReadWriteOnce']
+openshift_logging_storage_host=ans.lab.local
+openshift_logging_storage_nfs_directory=/ocp_exports
+openshift_logging_storage_volume_name=logging
+openshift_logging_storage_volume_size=5Gi
+openshift_logging_storage_labels={'storage': 'logging'}
+openshift_logging_es_cluster_size=1
+
+openshift_hosted_prometheus_deploy=true
+openshift_prometheus_storage_kind=nfs
+openshift_prometheus_storage_access_modes=['ReadWriteOnce']
+openshift_prometheus_storage_host=ans.lab.local
+openshift_prometheus_storage_nfs_directory=/ocp_exports
+openshift_prometheus_storage_volume_name=prometheus
+openshift_prometheus_storage_volume_size=5Gi
+openshift_prometheus_storage_labels={'storage': 'prometheus'}
+openshift_prometheus_storage_type='pvc'
+
+openshift_prometheus_alertmanager_storage_kind=nfs
+openshift_prometheus_alertmanager_storage_access_modes=['ReadWriteOnce']
+openshift_prometheus_alertmanager_storage_host=ans.lab.local
+openshift_prometheus_alertmanager_storage_nfs_directory=/ocp_exports
+openshift_prometheus_alertmanager_storage_volume_name=prometheusalertmanager
+openshift_prometheus_alertmanager_storage_volume_size=5Gi
+openshift_prometheus_alertmanager_storage_labels={'storage': 'prometheusalertmanager'}
+openshift_prometheus_alertmanager_storage_type='pvc'
+
+openshift_prometheus_alertbuffer_storage_kind=nfs
+openshift_prometheus_alertbuffer_storage_access_modes=['ReadWriteOnce']
+openshift_prometheus_alertbuffer_storage_host=ans.lab.local
+openshift_prometheus_alertbuffer_storage_nfs_directory=/ocp_exports
+openshift_prometheus_alertbuffer_storage_volume_name=prometheusalertbuffer
+openshift_prometheus_alertbuffer_storage_volume_size=5Gi
+openshift_prometheus_alertbuffer_storage_labels={'storage': 'prometheusalertbuffer'}
+openshift_prometheus_alertbuffer_storage_type='pvc'
+
+os_sdn_network_plugin_name='redhat/openshift-ovs-multitenant'
+osm_cluster_network_cidr=10.128.0.0/14
+openshift_portal_net=172.30.0.0/16
+
+openshift_master_api_port=443
+openshift_master_console_port=443
+
+openshift_enable_service_catalog=true
+template_service_broker_install=true
+
+[masters]
+mas.ocp.lab
+
+[etcd]
+mas.ocp.lab
+
+[nonmasters]
+inf.ocp.lab
+app.ocp.lab
+
+[nodes]
+mas.ocp.lab openshift_node_labels="{'region': 'primary', 'zone': 'master'}"
+inf.ocp.lab openshift_node_labels="{'region': 'infra', 'zone': 'infra'}"
+app.ocp.lab openshift_node_labels="{'region': 'primary', 'zone': 'app'}"
+

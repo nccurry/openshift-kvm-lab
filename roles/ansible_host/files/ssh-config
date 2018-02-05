@@ -1,0 +1,3 @@
+Host *.ocp.lab
+   StrictHostKeyChecking no
+   UserKnownHostsFile=/dev/null

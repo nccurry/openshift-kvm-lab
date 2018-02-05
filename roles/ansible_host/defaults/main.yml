@@ -1,0 +1,48 @@
+packages:
+- lvm2
+- dnsmasq
+- centos-release-openshift-origin
+- nfs-utils
+- screen
+- vim
+- atomic-openshift-utils
+nfs:
+  pv: /dev/vdb
+  vg: ocp
+  export_dir: /ocp_exports
+  exports:
+  - lv: registry
+    fstype: xfs
+    size: 5g
+    mountpath: /ocp_exports/registry
+    mountopts: rw,sync
+  - lv: metrics
+    fstype: xfs
+    size: 5g
+    mountpath: /ocp_exports/metrics
+    mountopts: rw,sync
+  - lv: logging
+    fstype: xfs
+    size: 5g
+    mountpath: /ocp_exports/logging
+    mountopts: rw,sync
+  - lv: prometheus
+    fstype: xfs
+    size: 5g
+    mountpath: /ocp_exports/prometheus
+    mountopts: rw,sync
+  - lv: prometheusalertmanager
+    fstype: xfs
+    size: 5g
+    mountpath: /ocp_exports/prometheusalertmanager
+    mountopts: rw,sync
+  - lv: prometheusalertbuffer
+    fstype: xfs
+    size: 5g
+    mountpath: /ocp_exports/prometheusalertbuffer
+    mountopts: rw,sync
+  - lv: pvs
+    fstype: xfs
+    size: 5g
+    mountpath: /ocp_exports/pvs
+    mountopts: rw,sync
