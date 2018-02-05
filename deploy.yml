@@ -1,5 +1,7 @@
 ---
 - import_playbook: playbooks/provision_vms.yml
+  tags: 
+  - provision
 
 - hosts: all
   become: yes
@@ -7,9 +9,13 @@
   strategy: free
   vars_files:
   - vars/environment.yml
-  roles:
-  - ssh
   tasks:
+  - name: Configure ssh between hosts using generated ssh keys
+    vars:
+      host_dir: "{{ playbook_dir }}/.hosts"
+    include_role:
+      name: ssh
+        
   - name: Bootstrap ansible host
     include_role:
       name: ansible_host

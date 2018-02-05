@@ -1,4 +1,6 @@
+user: "{{ lookup('env','USER') }}"
 packages:
+- NetworkManager
 - wget 
 - git 
 - net-tools 
@@ -10,4 +12,3 @@ packages:
 - sos 
 - psacct
 - centos-release-openshift-origin
-- atomic-openshift-utils

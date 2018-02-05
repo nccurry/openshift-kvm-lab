@@ -30,6 +30,21 @@
     when: vm_list.stdout | search(item.key)
     with_dict: "{{ nodes }}"
 
+  - name: Get current list of storage pools
+    shell: virsh --connect=qemu:///system pool-list --all
+    changed_when: false
+    register: pool_list
+
+  - name: Stop storage pools
+    shell: "virsh --connect=qemu:///system pool-destroy {{ item.key }}"
+    when: pool_list.stdout | search(item.key)
+    with_dict: "{{ nodes }}"
+
+  - name: Undefine storage pools
+    shell: "virsh --connect=qemu:///system pool-undefine {{ item.key }}"
+    when: pool_list.stdout | search(item.key)
+    with_dict: "{{ nodes }}"
+
   - name: Get current list of networks
     shell: virsh --connect=qemu:///system net-list
     changed_when: false
@@ -44,4 +59,4 @@
   - name: Delete files
     file:
       state: absent
-      path: "{{ playbook_dir }}/vms"
+      path: "{{ host_dir }}"

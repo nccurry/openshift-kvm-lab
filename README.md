@@ -26,3 +26,9 @@ Since I am currently using Fedora 27, that is what this is written to run on, YM
 ## Modifying OpenShift deployment
 
 The ansible host file used to deploy OpenShift can be found at [roles/ansible_host/files/hosts](roles/ansible_host/files/hosts). It can be used to modify the OpenShift installation.
+
+## SSH into machine
+
+```bash
+[user@host openshift-kvm-lab]$ ssh -i .hosts/id_rsa 10.0.10.10
+```

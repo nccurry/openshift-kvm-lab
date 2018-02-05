@@ -19,7 +19,7 @@
 - name: Add key to authorized_keys
   lineinfile: 
     path: "/home/{{ user }}/.ssh/authorized_keys"
-    line: "{{ lookup('file', '../.hosts/id_rsa.pub') }}"
+    line: "{{ lookup('file', host_dir+'/id_rsa.pub') }}"
 
 - name: Create ssh config file
   copy:

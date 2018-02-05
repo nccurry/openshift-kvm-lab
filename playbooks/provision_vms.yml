@@ -3,8 +3,9 @@
   become: false
   gather_facts: false
   vars:
-    host_dir: "../.hosts"
-    host_image_dir: "../.images"
+    host_dir: "{{ playbook_dir }}/../.hosts"
+    host_image_dir: "{{ playbook_dir }}/../.images"
+    user: "{{ lookup('env','USER') }}"
   vars_files:
   - ../vars/environment.yml
   tasks:
@@ -19,7 +20,7 @@
     get_url:
       url: "{{ host_image.url }}"
       dest: "{{ host_image_dir }}/{{ host_image.name }}"
-      checksum: "{{ host_image.checksum }}"
+      checksum: "sha256:{{ host_image.checksum }}"
       force: yes
     when: not host_image_stat.stat.exists or host_image.checksum != host_image_stat.stat.checksum
 
@@ -40,8 +41,8 @@
 
   - name: Store key values for cloud-init
     set_fact: 
-      id_rsa_pub: "{{ lookup('file', './vms/id_rsa.pub') }}"
-      id_rsa: "{{ lookup('file', './vms/id_rsa') }}"
+      id_rsa_pub: "{{ lookup('file', '../.hosts/id_rsa.pub') }}"
+      id_rsa: "{{ lookup('file', '../.hosts/id_rsa') }}"
 
   - name: Check existing base disks
     stat:
@@ -118,7 +119,7 @@
     register: vm_list
 
   - name: Create vms
-    shell: "virt-install --connect qemu:///system --name {{ item.key }} --memory {{ item.value.memory }} --vcpus {{ item.value.cpus }} --import --os-type=linux --os-variant rhel7 --disk {{ host_dir }}/{{ item.key }}/{{ item.key }}.qcow2,format=qcow2,bus=virtio --disk {{ host_dir }}/{{ item.key }}/cidata.iso,device=cdrom --network bridge={{ network.bridge_name }},mac={{ item.value.mac }} --graphics none --noautoconsole"
+    shell: "virt-install --connect qemu:///system --name {{ item.key }} --memory {{ item.value.memory }} --vcpus {{ item.value.cpus }} --import --os-type=linux --os-variant rhel7 --disk {{ host_dir }}/{{ item.key }}/{{ item.key }}.qcow2,format=qcow2,bus=virtio --disk {{ host_dir }}/{{ item.key }}/cidata.iso,device=cdrom --network bridge={{ network.bridge_name }},mac={{ item.value.mac }} --noautoconsole"
     when: not vm_list.stdout | search(item.key)
     with_dict: "{{ nodes }}"
 
@@ -132,14 +133,22 @@
     shell: "qemu-img create -f raw {{ host_dir }}/{{ item.key }}/{{ item.key }}-disk-{{ item.value.extra_disk_size }}.img {{ item.value.extra_disk_size }}"
     with_items: "{{ extradisk_stats.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
 
-    # Probably should check seperately with 'virsh --connect=qemu:///system domblklist --domain ans.lab.local' for this instead of using the presence of the disk on file... YAGNI?
+  - name: Check mounted disks
+    shell: "virsh --connect=qemu:///system domblklist --details --domain {{ item.key }} | grep disk | awk '{ print $3 }'"
+    changed_when: false
+    register: mounted_disks
+    with_dict: "{{ nodes }}"
+
+    # Select results where stdout contains only the default disk 'vda' (as opposed to vda\nvdb)
   - name: Attach disks to vms
     shell: "virsh --connect=qemu:///system attach-disk {{ item.key }} --source {{ host_dir }}/{{ item.key }}/{{ item.key }}-disk-{{ item.value.extra_disk_size }}.img --target vdb --persistent"
-    with_items: "{{ extradisk_stats.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
+    with_items: "{{ mounted_disks.results | selectattr('stdout', 'equalto', 'vda') | map(attribute='item') | list }}" 
 
 - hosts: all
   become: false
   gather_facts: false
+  vars_files:
+  - ../vars/environment.yml
   tasks:
   - name: Wait until hosts come up before proceeding
     wait_for_connection:

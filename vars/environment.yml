@@ -1,15 +1,16 @@
 host_image:
-  name: CentOS-Atomic-Host-7.1801-02-GenericCloud.qcow2
-  url: https://cloud.centos.org/centos/7/atomic/images/CentOS-Atomic-Host-7.1801-02-GenericCloud.qcow2
-  checksum: sha256:6733e5af8b995006778a7431615d1b9387d86c9c9e6f04553faff22ce84f0f2e
-user: admin
+  name: CentOS-7-x86_64-GenericCloud-1801-01.qcow2
+  url: https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1801-01.qcow2
+  checksum: fb0f10fe4a2e9eaaf2d55153289dcb5ddd08e21bc080f92f2138588731df29d6
 network:
   name: ocp.lab
   forward_interface: wlp4s0
   bridge_name: virbr1
   mac: 52:54:00:aa:dc:1c
-  ip: 10.0.10.1
+  network: 10.0.10.0
   netmask: 255.255.255.0
+  broadcast: 10.0.10.255
+  gateway: 10.0.10.1
   dhcp_start: 10.0.10.10
   dhcp_end: 10.0.10.20
 nodes:
