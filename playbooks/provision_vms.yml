@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
-  become: false
-  gather_facts: false
+  become: no
+  gather_facts: no
   vars:
     host_dir: "{{ playbook_dir }}/../.hosts"
     host_image_dir: "{{ playbook_dir }}/../.images"
@@ -148,14 +148,54 @@
     shell: "virsh --connect=qemu:///system attach-disk {{ item.key }} --source {{ host_dir }}/{{ item.key }}/{{ item.key }}-disk-{{ item.value.extra_disk_size }}.img --target vdb --persistent"
     with_items: "{{ mounted_disks.results | selectattr('stdout', 'equalto', 'vda') | map(attribute='item') | list }}" 
 
+- hosts: localhost
+  become: yes
+  gather_facts: no
+  vars_files:
+  - ../vars/environment.yml
+  tasks:
+  - name: Configure /etc/hosts
+    blockinfile:
+      state: present
+      path: /etc/hosts
+      block: |
+        {{ nodes['ans.lab.local']['ip'] }} ans ans.lab.local
+        {{ nodes['mas.lab.local']['ip'] }} mas mas.lab.local
+        {{ nodes['inf.lab.local']['ip'] }} inf inf.lab.local
+        {{ nodes['app.lab.local']['ip'] }} app app.lab.local
+        {{ nodes['mas.lab.local']['ip'] }} ocp.lab.local
+
 - hosts: all
-  become: false
+  become: yes
   gather_facts: false
   vars_files:
   - ../vars/environment.yml
   tasks:
   - name: Wait until hosts come up before proceeding
     wait_for_connection:
-      delay: 10
       sleep: 5
       timeout: 100
+
+  - name: Create network interface configuration 
+    template:
+      src: "{{ playbook_dir }}/../templates/ifcfg-eth0.j2"
+      dest: /etc/sysconfig/network-scripts/ifcfg-eth0
+      force: yes
+      owner: root
+      group: root
+      mode: 0644
+
+  - name: Install NetworkManager
+    yum:
+      name: NetworkManager
+      state: present
+
+  - name: Start and enable NetworkManager
+    systemd:
+      name: NetworkManager
+      state: started
+      enabled: yes
+
+  - name: Wierd hack to get NetworkManager to load configuration
+    command: 'nmcli con up eth0'
+    ignore_errors: yes

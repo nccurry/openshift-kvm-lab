@@ -5,7 +5,7 @@
   </forward>
   <bridge name='{{ network.bridge_name }}' stp='on' delay='0'/>
   <mac address='{{ network.mac }}'/>
-  <domain name='ocp.lab'/>
+  <domain name='lab.local'/>
   <ip address='{{ network.gateway }}' netmask='{{ network.netmask }}'>
     <dhcp>
     <range start='{{ network.dhcp_start }}' end='{{ network.dhcp_end }}'/>

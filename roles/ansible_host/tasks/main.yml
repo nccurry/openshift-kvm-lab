@@ -17,22 +17,6 @@
   with_items:
   - nfs-server
   - dnsmasq
-  - NetworkManager
-
-#nmcli con mod "System eth0" ipv4.method manual ipv4.dns 10.0.10.10 ipv4.dns-search ocp.lab ipv4.addresses 10.0.10.13/32 ipv4.gateway 10.0.10.1
-- name: Configure NetworkManager
-  nmcli:
-    conn_name: System eth0
-    ifname: eth0
-    type: ethernet
-    ip4: "{{ nodes['ans.ocp.lab']['ip'] }}"
-    gw4: "{{ network.gateway }}"
-    dns4:
-    - 8.8.8.8
-    autoconnect: yes
-    state: present
-  notify:
-  - Restart NetworkManager
 
 - name: Create NFS export directory
   file:

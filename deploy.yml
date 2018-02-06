@@ -18,11 +18,11 @@
     tags:
     - ssh
     - bootstrap
-        
+    
   - name: Bootstrap ansible host
     include_role:
       name: ansible_host
-    when: inventory_hostname == '10.0.10.10'
+    when: inventory_hostname == 'ans.lab.local'
     tags:
     - ansible
     - bootstrap
@@ -30,7 +30,7 @@
   - name: Bootstrap cluster hosts
     include_role:
       name: cluster_host
-    when: inventory_hostname != '10.0.10.10'
+    when: inventory_hostname != 'ans.lab.local'
     tags:
     - cluster
     - bootstrap

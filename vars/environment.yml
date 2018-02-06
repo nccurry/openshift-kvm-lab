@@ -5,10 +5,10 @@ host_image:
   size: 15G
 oc_url: https://github.com/openshift/origin/releases/download/v3.7.1/openshift-origin-client-tools-v3.7.1-ab0f056-linux-64bit.tar.gz
 network:
-  name: ocp.lab
+  name: lab.local
   forward_interface: wlp4s0
   bridge_name: virbr1
-  mac: 52:54:00:aa:dc:1c
+  mac: 52:54:00:1b:1c:da
   network: 10.0.10.0
   netmask: 255.255.255.0
   broadcast: 10.0.10.255
@@ -16,27 +16,31 @@ network:
   dhcp_start: 10.0.10.10
   dhcp_end: 10.0.10.20
 nodes:
-  ans.ocp.lab:
+  ans.lab.local:
     ip: 10.0.10.10
-    mac: 52:54:00:6c:3c:01
+    mac: 52:54:00:7b:0a:15
+    dns: 8.8.8.8
     memory: 2048
     cpus: 1
     extra_disk_size: 50G
-  mas.ocp.lab:
+  mas.lab.local:
     ip: 10.0.10.11
-    mac: 52:54:00:0c:c2:9c
+    mac: 52:54:00:4a:c3:b9
+    dns: 10.0.10.10
     memory: 4096
     cpus: 1
     extra_disk_size: 5G
-  inf.ocp.lab:
+  inf.lab.local:
     ip: 10.0.10.12
-    mac: 52:54:00:07:ae:0a
+    mac: 52:54:00:72:1c:71
+    dns: 10.0.10.10
     memory: 8196
     cpus: 1
     extra_disk_size: 5G
-  app.ocp.lab:
+  app.lab.local:
     ip: 10.0.10.13
-    mac: 52:54:00:3a:d1:62
+    mac: 52:54:00:dc:eb:e1
+    dns: 10.0.10.10
     memory: 2048
     cpus: 1
     extra_disk_size: 5G

@@ -1,7 +1,7 @@
 [ansible]
-10.0.10.10
+ans.lab.local
 
 [openshift]
-10.0.10.11
-10.0.10.12
-10.0.10.13
+mas.lab.local
+inf.lab.local
+app.lab.local

@@ -60,3 +60,20 @@
     file:
       state: absent
       path: "{{ host_dir }}"
+
+- hosts: localhost
+  become: yes
+  gather_facts: no
+  vars_files:
+  - ../vars/environment.yml
+  tasks:
+  - name: Clean /etc/hosts
+    blockinfile:
+      state: absent
+      path: /etc/hosts
+      block: |
+        {{ nodes['ans.lab.local']['ip'] }} ans ans.lab.local
+        {{ nodes['mas.lab.local']['ip'] }} mas mas.lab.local
+        {{ nodes['inf.lab.local']['ip'] }} inf inf.lab.local
+        {{ nodes['app.lab.local']['ip'] }} app app.lab.local
+        {{ nodes['mas.lab.local']['ip'] }} ocp.lab.local

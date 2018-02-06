@@ -1,7 +1,5 @@
 user: "{{ lookup('env','USER') }}"
 packages:
-- NetworkManager
-- NetworkManager-glib
 - lvm2
 - dnsmasq
 - centos-release-openshift-origin

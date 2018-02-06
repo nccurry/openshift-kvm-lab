@@ -1,0 +1,12 @@
+TYPE=Ethernet
+BOOTPROTO=static
+IPADDR={{ nodes[inventory_hostname]['ip'] }}
+PREFIX=32
+GATEWAY={{ network.gateway }}
+DNS1={{ nodes[inventory_hostname]['dns'] }}
+DEFROUTE=yes
+IPV4_FAILURE_FATAL=no
+NAME=eth0
+DEVICE=eth0
+ONBOOT=yes
+NM_CONTROLLED=yes

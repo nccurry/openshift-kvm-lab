@@ -12,8 +12,3 @@
   systemd:
     name: nfs-server
     state: restarted
-
-- name: Restart NetworkManager
-  systemd:
-    name: NetworkManager
-    state: restarted
