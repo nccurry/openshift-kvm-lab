@@ -25,12 +25,14 @@
     conn_name: System eth0
     ifname: eth0
     type: ethernet
-    ip4: "{{ node['ans.ocp.lab']['ip'] }}"
+    ip4: "{{ nodes['ans.ocp.lab']['ip'] }}"
     gw4: "{{ network.gateway }}"
     dns4:
     - 8.8.8.8
     autoconnect: yes
     state: present
+  notify:
+  - Restart NetworkManager
 
 - name: Create NFS export directory
   file:
@@ -78,9 +80,9 @@
   with_items: "{{ nfs.exports }}"
 
 - name: Create /etc/exports
-  copy:
+  template:
     dest: /etc/exports
-    src: files/exports
+    src: templates/exports
     mode: 0664
   notify:
   - Restart nfs-server
@@ -112,15 +114,16 @@
     name: atomic-openshift-utils
     state: present
 
-# - name: Open ports
-#   firewalld:
-#   service: "{{ item }}"
-#   permanent: true
-#   state: enabled
-#   with_items:
-#   - dns
-#   - nfs
-#   - mountd
-#   - rpc-bind
-#   notify:
-#   - Restart firewalld
+- name: Check oc client
+  stat:
+    path: "/home/{{ user }}/bin/oc"
+  register: oc_stat
+    
+- name: Download and extract oc client tar
+  unarchive:
+    src: "{{ oc_url }}"
+    dest: "/tmp"
+    remote_src: yes
+    owner: "{{ user }}"
+    group: "{{ user }}"
+  when: not oc_stat.stat.exists

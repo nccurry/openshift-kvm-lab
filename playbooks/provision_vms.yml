@@ -56,6 +56,10 @@
       dest: "{{ host_dir }}/{{ item.key }}/{{ item.key }}.qcow2"
     with_items: "{{ disk_stats.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
 
+  - name: Resize base disk
+    command: "qemu-img resize {{ host_dir }}/{{ item.key }}/{{ item.key }}.qcow2 {{ host_image.size }}"
+    with_items: "{{ disk_stats.results | selectattr('stat.exists', 'equalto', false) | map(attribute='item') | list }}"
+
   - name: Check existing meta-data files for cloud-init
     stat:
       path: "{{ host_dir }}/{{ item.key }}/meta-data"

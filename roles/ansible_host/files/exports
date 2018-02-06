@@ -1,1 +1,0 @@
-{{ nfs.export_dir }}   10.0.10.0/24(rw,sync,no_root_squash,no_subtree_check)

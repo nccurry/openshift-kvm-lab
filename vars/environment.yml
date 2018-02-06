@@ -2,6 +2,8 @@ host_image:
   name: CentOS-7-x86_64-GenericCloud-1801-01.qcow2
   url: https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1801-01.qcow2
   checksum: fb0f10fe4a2e9eaaf2d55153289dcb5ddd08e21bc080f92f2138588731df29d6
+  size: 15G
+oc_url: https://github.com/openshift/origin/releases/download/v3.7.1/openshift-origin-client-tools-v3.7.1-ab0f056-linux-64bit.tar.gz
 network:
   name: ocp.lab
   forward_interface: wlp4s0

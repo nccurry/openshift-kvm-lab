@@ -93,10 +93,6 @@ mas.ocp.lab
 [etcd]
 mas.ocp.lab
 
-[nonmasters]
-inf.ocp.lab
-app.ocp.lab
-
 [nodes]
 mas.ocp.lab openshift_node_labels="{'region': 'primary', 'zone': 'master'}"
 inf.ocp.lab openshift_node_labels="{'region': 'infra', 'zone': 'infra'}"
