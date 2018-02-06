@@ -1,24 +1,24 @@
-- name: Update packages
-  yum: 
-    name: "*"
-    state: latest
+# - name: Update packages
+#   yum: 
+#     name: "*"
+#     state: latest
 
-- name: Download required packages
-  yum:
-    state: present
-    name: "{{ item }}"
-  with_items: "{{ packages }}"
+# - name: Download required packages
+#   yum:
+#     state: present
+#     name: "{{ item }}"
+#   with_items: "{{ packages }}"
 
-- name: Install OpenShift files
-  yum:
-    name: atomic-openshift-utils
-    state: present
+# - name: Install OpenShift files
+#   yum:
+#     name: atomic-openshift-utils
+#     state: present
 
-- name: Start and enable NetworkManager
-  systemd:
-    name: NetworkManager
-    state: started
-    enabled: yes
+# - name: Start and enable NetworkManager
+#   systemd:
+#     name: NetworkManager
+#     state: started
+#     enabled: yes
 
 #nmcli con mod "System eth0" ipv4.method manual ipv4.dns 10.0.10.10 ipv4.dns-search ocp.lab ipv4.addresses 10.0.10.13/32 ipv4.gateway 10.0.10.1
 - name: Configure NetworkManager

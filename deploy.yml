@@ -15,13 +15,22 @@
       host_dir: "{{ playbook_dir }}/.hosts"
     include_role:
       name: ssh
+    tags:
+    - ssh
+    - bootstrap
         
   - name: Bootstrap ansible host
     include_role:
       name: ansible_host
     when: inventory_hostname == '10.0.10.10'
+    tags:
+    - ansible
+    - bootstrap
 
   - name: Bootstrap cluster hosts
     include_role:
       name: cluster_host
     when: inventory_hostname != '10.0.10.10'
+    tags:
+    - cluster
+    - bootstrap

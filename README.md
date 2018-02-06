@@ -32,3 +32,11 @@ The ansible host file used to deploy OpenShift can be found at [roles/ansible_ho
 ```bash
 [user@host openshift-kvm-lab]$ ssh -i .hosts/id_rsa 10.0.10.10
 ```
+
+## TODO:
+/etc/resolv.conf not working correctly on deploy
+NetworkManager not working correctly on deploy
+Master hostname is incorrect for some reason
+Deploy seperate disks for docker storage
+Deploy on RHEL or CentOS
+Deploy multiple version of OpenShift if necessary
