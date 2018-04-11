@@ -61,3 +61,9 @@
       src: templates/cluster-up.j2
       dest: "/home/{{ lookup('env','USER') }}/bin/cluster-up"
       mode: 0774
+
+  - name: Generate shutdown script
+    template:
+      src: templates/cluster-down.j2
+      dest: "/home/{{ lookup('env','USER') }}/bin/cluster-down"
+      mode: 0774

@@ -54,15 +54,15 @@ openshift_metrics_storage_volume_name=metrics
 openshift_metrics_storage_volume_size=5Gi
 openshift_metrics_storage_labels={'storage': 'metrics'}
 
-openshift_logging_install_logging=true
-openshift_logging_storage_kind=nfs
-openshift_logging_storage_access_modes=['ReadWriteOnce']
-openshift_logging_storage_host=ans.lab.local
-openshift_logging_storage_nfs_directory=/ocp_exports
-openshift_logging_storage_volume_name=logging
-openshift_logging_storage_volume_size=5Gi
-openshift_logging_storage_labels={'storage': 'logging'}
-openshift_logging_es_cluster_size=1
+openshift_logging_install_logging=false
+#openshift_logging_storage_kind=nfs
+#openshift_logging_storage_access_modes=['ReadWriteOnce']
+#openshift_logging_storage_host=ans.lab.local
+#openshift_logging_storage_nfs_directory=/ocp_exports
+#openshift_logging_storage_volume_name=logging
+#openshift_logging_storage_volume_size=5Gi
+#openshift_logging_storage_labels={'storage': 'logging'}
+#openshift_logging_es_cluster_size=1
 
 os_sdn_network_plugin_name='redhat/openshift-ovs-multitenant'
 osm_cluster_network_cidr=10.128.0.0/14

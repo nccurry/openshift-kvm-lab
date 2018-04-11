@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+for vm in $(virsh --connect=qemu:///system list --all | grep {{ network.name }} | awk '{ print $2 }'); do
+    virsh --connect=qemu:///system shutdown $vm
+done
