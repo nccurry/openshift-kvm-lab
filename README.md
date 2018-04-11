@@ -47,10 +47,21 @@ The ansible host file used to deploy OpenShift can be found at [roles/ansible_ho
 
 [user@ans ~]$ ansible-playbook -v -i hosts openshift-ansible/playbooks/deploy_cluster.yml
 ```
+
+## Start Cluster
+A script ```~/bin/cluster-up``` that will start the cluster
+```bash
+[user@host ~]$ cluster-up
+```
+
+## Shutdown Cluster
+A script ```~/bin/cluster-down``` that will shutdown the cluster
+```bash
+[user@host ~]$ cluster-down
+```
+
 ## TODO:
 
-Master hostname is incorrect for some reason
-Deploy separate disks for docker storage
-Automatically put SSH script ~/bin
-Automatically put start/stop script into ~/bin
-Generalize for arbitrary cluster versions
+* Allow deployment on CentOS of Origin
+* Deploy separate disks for docker storage
+* Generalize for arbitrary cluster versions
