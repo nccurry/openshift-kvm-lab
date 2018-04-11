@@ -1,5 +1,6 @@
 user: "{{ lookup('env','USER') }}"
 packages:
+- vim
 - wget 
 - git 
 - net-tools 
@@ -10,4 +11,4 @@ packages:
 - kexec-tools 
 - sos 
 - psacct
-- centos-release-openshift-origin
+- docker

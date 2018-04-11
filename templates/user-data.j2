@@ -5,3 +5,8 @@ users:
     ssh-authorized-keys:
     - {{ id_rsa_pub }}
     sudo: ALL=(ALL) NOPASSWD:ALL
+{% if host_image.os == 'rhel' %}
+rh_subscription:
+    username: {{ rhsm_username }}
+    password: {{ rhsm_password }}
+{% endif %}

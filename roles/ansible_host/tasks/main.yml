@@ -1,13 +1,21 @@
-- name: Update packages
-  yum: 
-    name: "*"
-    state: latest
+- name: Check enabled repositories
+  shell: subscription-manager repos --list-enabled | grep Enabled | wc -l
+  register: rhsm_enabled
+  changed_when: false
+
+- name: Disable all RHSM repositories
+  command: subscription-manager repos --disable='*'
+  when: rhsm_enabled.stdout != "5"
+
+- name: Enable OpenShift repositories
+  command: subscription-manager repos --enable="rhel-7-server-rpms" --enable="rhel-7-server-extras-rpms" --enable="rhel-7-server-ose-3.9-rpms" --enable="rhel-7-fast-datapath-rpms" --enable="rhel-7-server-ansible-2.4-rpms"
+  when: rhsm_enabled.stdout != "5"
 
 - name: Download required packages
-  yum:
-    state: present
-    name: "{{ item }}"
-  with_items: "{{ packages }}"
+  command: yum -y install wget git net-tools bind-utils iptables-services bridge-utils bash-completion kexec-tools sos psacct vim ansible atomic-openshift-utils screen nfs-utils dnsmasq lvm2
+
+- name: Update packages
+  command: yum -y update
 
 - name: Start/enable services
   systemd:
@@ -93,21 +101,10 @@
     group: "{{ user }}"
     mode: 0664
 
-- name: Install OpenShift files
-  yum:
-    name: atomic-openshift-utils
-    state: present
-
-- name: Check oc client
-  stat:
-    path: "/home/{{ user }}/bin/oc"
-  register: oc_stat
-    
-- name: Download and extract oc client tar
-  unarchive:
-    src: "{{ oc_url }}"
-    dest: "/tmp"
-    remote_src: yes
+- name: Create ansible.cfg
+  copy:
+    src: files/ansible.cfg
+    dest: "/home/{{ user }}/ansible.cfg"
     owner: "{{ user }}"
     group: "{{ user }}"
-  when: not oc_stat.stat.exists
+    mode: 0664

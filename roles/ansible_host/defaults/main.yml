@@ -2,10 +2,14 @@ user: "{{ lookup('env','USER') }}"
 packages:
 - lvm2
 - dnsmasq
-- centos-release-openshift-origin
 - nfs-utils
+- bind-utils
+- bash-completion
 - screen
 - vim
+- git
+- ansible
+- atomic-openshift-utils
 nfs:
   pv: /dev/vdb
   vg: ocp

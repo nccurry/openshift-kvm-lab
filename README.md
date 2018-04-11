@@ -1,6 +1,6 @@
 # OpenShift KVM Lab
 
-This repository is used to get an OpenShift lab running quickly on a laptop with enough horsepower to support a small 4 node cluster via Ansible. My laptop has ~20GB of RAM and that is sufficient to run this with the defaults.  
+This repository is used to get an OpenShift lab running quickly on a fedora machine with enough horsepower to support a small 4 node cluster via Ansible. My laptop has ~20GB of RAM and that is sufficient to run this with the defaults.  
 Since I am currently using Fedora 27, that is what this is written to run on, YMMV.
 
 ## Install Prerequisites
@@ -11,10 +11,17 @@ Since I am currently using Fedora 27, that is what this is written to run on, YM
 
 ## Deploying the Cluster
 
+### Set RHSM credentials if using RHEL
+```bash
+[user@host openshift-kvm-lab]$ export RHSM_USERNAME=XXXXXXXXX
+[user@host openshift-kvm-lab]$ export RHSM_PASSWORD=XXXXXXXXX
+[user@host openshift-kvm-lab]$ export RHSM_POOL=XXXXXXXXX
+```
+
 ### Run deployment playbook
 
 ```bash
-[user@host openshift-kvm-lab]$ ansible-playbook -v -i hosts deploy.yml | tee deploy.log
+[user@host openshift-kvm-lab]$ ansible-playbook -v deploy.yml | tee deploy.log
 ```
 
 ### Tearing it all down
@@ -30,13 +37,20 @@ The ansible host file used to deploy OpenShift can be found at [roles/ansible_ho
 ## SSH into machine
 
 ```bash
-[user@host openshift-kvm-lab]$ ssh -i .hosts/id_rsa 10.0.10.10
+[user@host openshift-kvm-lab]$ cluster-ssh
 ```
 
+## Run OpenShift Installer
+
+```bash
+[user@ans ~]$ ansible-playbook -v -i hosts openshift-ansible/playbooks/prerequisites.yml
+
+[user@ans ~]$ ansible-playbook -v -i hosts openshift-ansible/playbooks/deploy_cluster.yml
+```
 ## TODO:
-/etc/resolv.conf not working correctly on deploy
-NetworkManager not working correctly on deploy
+
 Master hostname is incorrect for some reason
-Deploy seperate disks for docker storage
-Deploy on RHEL or CentOS
-Deploy multiple version of OpenShift if necessary
+Deploy separate disks for docker storage
+Automatically put SSH script ~/bin
+Automatically put start/stop script into ~/bin
+Generalize for arbitrary cluster versions

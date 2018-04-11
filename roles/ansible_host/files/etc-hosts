@@ -5,4 +5,4 @@
 10.0.10.12 inf inf.lab.local
 10.0.10.13 app app.lab.local
 10.0.10.11 ocp.lab.local
-10.0.10.11 int-ocp.lab.local
+10.0.10.11 ocp-int.lab.local

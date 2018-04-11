@@ -1,4 +1,4 @@
 *.retry
 .hosts
 .images
-rhsm.yaml
+*.log

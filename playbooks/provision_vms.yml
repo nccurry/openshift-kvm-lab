@@ -9,6 +9,11 @@
   vars_files:
   - ../vars/environment.yml
   tasks:
+  - name: Create image directory
+    file:
+      state: directory
+      path: "{{ host_image_dir }}"
+
   - name: Check if base host image exists
     stat:
       path: "{{ host_image_dir }}/{{ host_image.name }}"
@@ -30,19 +35,10 @@
       path: "{{ host_dir }}/{{ item.key }}"
     with_dict: "{{ nodes }}"
 
-  - name: Ensure ssh keypair doesn't already exist
-    stat:
-      path: "{{ host_dir }}/id_rsa"
-    register: id_rsa_stat
-
   - name: Generate ssh key
     command: "ssh-keygen -b 2048 -t rsa -f {{ host_dir }}/id_rsa -q -N ''"
-    when: not id_rsa_stat.stat.exists
-
-  - name: Store key values for cloud-init
-    set_fact: 
-      id_rsa_pub: "{{ lookup('file', '../.hosts/id_rsa.pub') }}"
-      id_rsa: "{{ lookup('file', '../.hosts/id_rsa') }}"
+    args:
+      creates: "{{ host_dir }}/id_rsa"
 
   - name: Check existing base disks
     stat:
@@ -79,6 +75,9 @@
     register: userdata_stats
 
   - name: Generate user-data files for cloud-init
+    vars:
+      id_rsa_pub: "{{ lookup('file', '../.hosts/id_rsa.pub') }}"
+      id_rsa: "{{ lookup('file', '../.hosts/id_rsa') }}"
     template:
       src: ../templates/user-data.j2
       dest: "{{ host_dir }}/{{ item.key }}/user-data"
@@ -115,7 +114,7 @@
     - shell: "virsh --connect=qemu:///system net-define --file {{ host_dir }}/network.xml"
     - shell: "virsh --connect=qemu:///system net-autostart --network {{ network.name }}"
     - shell: "virsh --connect=qemu:///system net-start {{ network.name }}"
-    when: not net_list.stdout | search(network.name)
+    when: not net_list.stdout is search(network.name)
 
   - name: Check if vms exist
     shell: virsh --connect=qemu:///system list
@@ -124,7 +123,7 @@
 
   - name: Create vms
     shell: "virt-install --connect qemu:///system --name {{ item.key }} --memory {{ item.value.memory }} --vcpus {{ item.value.cpus }} --import --os-type=linux --os-variant rhel7 --disk {{ host_dir }}/{{ item.key }}/{{ item.key }}.qcow2,format=qcow2,bus=virtio --disk {{ host_dir }}/{{ item.key }}/cidata.iso,device=cdrom --network bridge={{ network.bridge_name }},mac={{ item.value.mac }} --noautoconsole"
-    when: not vm_list.stdout | search(item.key)
+    when: not vm_list.stdout is search(item.key)
     with_dict: "{{ nodes }}"
 
   - name: Check existing vm disks
@@ -196,6 +195,10 @@
       state: started
       enabled: yes
 
-  - name: Wierd hack to get NetworkManager to load configuration
-    command: 'nmcli con up eth0'
-    ignore_errors: yes
+  # - name: Wierd hack to get NetworkManager to load configuration
+  #   command: 'nmcli con up "System eth0"'
+  #   ignore_errors: yes
+  - name: Restart Network Manager
+    systemd:
+      name: NetworkManager
+      state: restarted

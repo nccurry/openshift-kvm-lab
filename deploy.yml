@@ -1,7 +1,5 @@
 ---
 - import_playbook: playbooks/provision_vms.yml
-  tags: 
-  - provision
 
 - hosts: all
   become: yes
@@ -15,22 +13,51 @@
       host_dir: "{{ playbook_dir }}/.hosts"
     include_role:
       name: ssh
-    tags:
-    - ssh
-    - bootstrap
-    
+
+  - name: Check if node is already registered to RHSM if necessary
+    command: subscription-manager status
+    register: rhsm_status
+    changed_when: false
+    failed_when: false
+    when: host_image.os == 'rhel'
+
+  - name: Register to rhsm and attach pool if necessary
+    redhat_subscription:
+      username: "{{ rhsm_username }}"
+      password: "{{ rhsm_password }}"
+      pool: "^{{ rhsm_pool }}$"
+      state: present
+    register: rhsm_result
+    until: rhsm_result is success
+    retries: 10
+    delay: 1
+    ignore_errors: yes
+    when: host_image.os == 'rhel' and "'Current' not in rhsm_status.stdout"
+
   - name: Bootstrap ansible host
     include_role:
       name: ansible_host
     when: inventory_hostname == 'ans.lab.local'
-    tags:
-    - ansible
-    - bootstrap
 
   - name: Bootstrap cluster hosts
     include_role:
       name: cluster_host
     when: inventory_hostname != 'ans.lab.local'
-    tags:
-    - cluster
-    - bootstrap
+
+- hosts: localhost
+  become: no
+  gather_facts: no
+  vars_files:
+  - vars/environment.yml
+  tasks:
+  - name: Generate SSH script
+    template:
+      src: templates/cluster-ssh.j2
+      dest: "/home/{{ lookup('env','USER') }}/bin/cluster-ssh"
+      mode: 0774
+  
+  - name: Generate startup script
+    template:
+      src: templates/cluster-up.j2
+      dest: "/home/{{ lookup('env','USER') }}/bin/cluster-up"
+      mode: 0774
