@@ -1,0 +1,563 @@
+#!/usr/local/bin/ansible-playbook
+---
+- name: Deploy vms
+  hosts: localhost
+  become: no
+  gather_facts: no
+  tags:
+  - deploy
+  tasks:
+  - name: Install prerequisites
+    package:
+      name: "{{ item }}"
+    with_items:
+    - apache2-utils # Needed for htpasswd
+    - genisoimage
+    - openjdk-8-jre-headless # Needed for keytool
+    - python3-passlib 
+
+  - name: Check for required environment variables
+    tags:
+    - prereqs
+    - rhsm
+    fail:
+      msg: "Environment variable '{{ item }}' needs to be set. {{ lookup('env', item) == '' }}"
+    when: lookup('env', item) == ''
+    with_items:
+    - RHSM_USER
+    - RHSM_PASS
+    - RHSM_POOL
+      
+  - name: Create image directory
+    file:
+      state: directory
+      path: "{{ image_dir }}"
+
+  - name: Check if base host image exists
+    stat:
+      path: "{{ image_dir }}/{{ host_image.name }}"
+    register: host_image_stat
+
+  - name: Download host image if it does not exist
+    get_url:
+      url: "{{ host_image.url }}"
+      dest: "{{ image_dir }}/{{ host_image.name }}"
+      force: yes
+    when: not host_image_stat.stat.exists
+
+  - name: Create directories for hosts
+    file:
+      state: directory
+      path: "{{ host_environment_dir}}/{{ item.value.hostname }}"
+    with_dict: "{{ cluster_nodes }}"
+
+  - name: Generate ssh key
+    command: "ssh-keygen 
+              -b 2048 
+              -t rsa 
+              -f {{ host_environment_dir }}/id_rsa 
+              -q 
+              -N ''"
+    args:
+      creates: "{{ host_environment_dir }}/id_rsa"
+
+  - name: Check existing base disks
+    stat:
+      path: "{{ host_environment_dir }}/{{ item.value.hostname }}/{{ item.value.hostname }}.qcow2"
+    with_dict: "{{ cluster_nodes }}"
+    register: disk_stats
+
+  - name: Clone base os disks
+    copy:
+      src: "{{ image_dir }}/{{ host_image.name }}"
+      dest: "{{ host_environment_dir }}/{{ item.value.hostname }}/{{ item.value.hostname }}.qcow2"
+    with_items: "{{ disk_stats.results 
+                  | selectattr('stat.exists', 'equalto', false) 
+                  | map(attribute='item') 
+                  | list }}"
+
+  - name: Resize base disk
+    command: "qemu-img 
+              resize 
+              {{ host_environment_dir }}/{{ item.value.hostname }}/{{ item.value.hostname }}.qcow2 
+              {{ host_image.size }}"
+    with_items: "{{ disk_stats.results 
+                  | selectattr('stat.exists', 'equalto', false) 
+                  | map(attribute='item') 
+                  | list }}"
+
+  - name: Check existing meta-data files for cloud-init
+    stat:
+      path: "{{ host_environment_dir }}/{{ item.value.hostname }}/meta-data"
+    with_dict: "{{ cluster_nodes }}"
+    register: metadata_stats
+
+  - name: Generate meta-data files for cloud-init
+    copy:
+      content: |
+        instance-id: iid-ansibledeploy
+        local-hostname: {{ item.value.hostname }}
+      dest: "{{ host_environment_dir }}/{{ item.value.hostname }}/meta-data"
+    with_items: "{{ metadata_stats.results 
+                  | selectattr('stat.exists', 'equalto', false) 
+                  | map(attribute='item') 
+                  | list }}"
+
+  - name: Check existing user-data files for cloud-init
+    stat:
+      path: "{{ host_environment_dir }}/{{ item.value.hostname }}/user-data"
+    with_dict: "{{ cluster_nodes }}"
+    register: userdata_stats
+
+  # Example cloud-init user-data http://cloudinit.readthedocs.io/en/latest/topics/examples.html
+  - name: Generate user-data files for cloud-init
+    copy:
+      content: |
+        #cloud-config
+        users:
+          - name: {{ lookup('env', 'USER') }}
+            ssh-authorized-keys:
+            - {{ lookup('file', host_environment_dir + '/id_rsa.pub' ) }}
+            sudo: ALL=(ALL) NOPASSWD:ALL
+      dest: "{{ host_environment_dir }}/{{ item.value.hostname }}/user-data"
+    with_items: "{{ userdata_stats.results 
+                  | selectattr('stat.exists', 'equalto', false) 
+                  | map(attribute='item') 
+                  | list }}"
+
+  - name: Check existing cidata.iso files for cloud-init
+    stat:
+      path: "{{ host_environment_dir }}/{{ item.value.hostname }}/cidata.iso"
+    with_dict: "{{ cluster_nodes }}"
+    register: cidataiso_stats
+
+  - name: Generate cloud-init isos
+    command: "genisoimage 
+              -output {{ host_environment_dir }}/{{ item.value.hostname }}/cidata.iso 
+              -volid cidata 
+              -joliet 
+              -rock {{ host_environment_dir }}/{{ item.value.hostname }}/user-data 
+              {{ host_environment_dir }}/{{ item.value.hostname }}/meta-data"
+    with_items: "{{ cidataiso_stats.results 
+                  | selectattr('stat.exists', 'equalto', false) 
+                  | map(attribute='item') 
+                  | list }}"
+
+  - name: Check existing network.xml file
+    stat:
+      path: "{{ host_environment_dir }}/network.xml"
+    register: network_stat
+
+  - name: Generate vm network xml
+    copy:
+      content: |
+        <network>
+          <name>{{ network.name }}</name>
+          <forward dev='{{ network.forward_interface }}' mode='nat'>
+            <interface dev='{{ network.forward_interface }}'/>
+          </forward>
+          <bridge name='{{ network.bridge_name }}' stp='on' delay='0'/>
+          <mac address='{{ network.mac }}'/>
+          <domain name='{{ network.name }}'/>
+          <ip address='{{ network.gateway }}' netmask='{{ network.netmask }}'>
+            <dhcp>
+            <range start='{{ network.dhcp_start }}' end='{{ network.dhcp_end }}'/>
+            {% for key, value in cluster_nodes.items() %}
+              <host mac='{{ value.mac }}' name='{{ value.hostname }}' ip='{{ value.ip }}'/>
+            {% endfor %}
+            </dhcp>
+          </ip>
+        </network>
+      dest: "{{ host_environment_dir }}/network.xml"
+    when: not network_stat.stat.exists
+
+  - name: Check to see if network exists
+    command: virsh --connect=qemu:///system net-list
+    changed_when: false
+    register: net_list
+
+  - name: Create vm network
+    block:
+    - command: "virsh 
+              --connect=qemu:///system net-define 
+              --file {{ host_environment_dir }}/network.xml"
+    - command: "virsh 
+              --connect=qemu:///system 
+              net-autostart 
+              --network {{ network.name }}"
+    - command: "virsh 
+              --connect=qemu:///system 
+              net-start {{ network.name }}"
+    when: not net_list.stdout is search(network.name)
+
+  - name: Check if vms exist
+    command: virsh --connect=qemu:///system list
+    changed_when: false
+    register: vm_list
+
+  - name: Create vms
+    command: "virt-install 
+            --connect qemu:///system 
+            --name {{ item.value.hostname }} 
+            --memory {{ item.value.memory }} 
+            --vcpus {{ item.value.cpus }} 
+            --import 
+            --os-type=linux 
+            --os-variant rhel7 
+            --disk {{ host_environment_dir }}/{{ item.value.hostname }}/{{ item.value.hostname }}.qcow2,format=qcow2,bus=virtio 
+            --disk {{ host_environment_dir }}/{{ item.value.hostname }}/cidata.iso,device=cdrom 
+            --network bridge={{ network.bridge_name }},mac={{ item.value.mac }} 
+            --noautoconsole"
+    when: not vm_list.stdout is search(item.value.hostname)
+    with_dict: "{{ cluster_nodes }}"
+
+  - name: Check existing vm disks
+    stat:
+      path: "{{ host_environment_dir }}/{{ item.value.hostname }}/{{ item.value.hostname }}-disk-{{ item.value.extra_disk_size }}.img"
+    with_dict: "{{ cluster_nodes }}"
+    register: extradisk_stats
+
+  - name: Create disks
+    command: "qemu-img 
+            create 
+            -f raw 
+            {{ host_environment_dir }}/{{ item.value.hostname }}/{{ item.value.hostname }}-disk-{{ item.value.extra_disk_size }}.img 
+            {{ item.value.extra_disk_size }}"
+    with_items: "{{ extradisk_stats.results 
+                  | selectattr('stat.exists', 'equalto', false) 
+                  | map(attribute='item') 
+                  | list }}"
+
+  - name: Check mounted disks
+    shell: "virsh 
+            --connect=qemu:///system 
+            domblklist 
+            --details 
+            --domain {{ item.value.hostname }} 
+            | grep disk 
+            | awk '{ print $3 }'"
+    changed_when: false
+    register: mounted_disks
+    with_dict: "{{ cluster_nodes }}"
+
+    # Select results where stdout contains only the default disk 'vda' (as opposed to vda\nvdb)
+  - name: Attach disks to vms
+    command: "virsh 
+            --connect=qemu:///system 
+            attach-disk {{ item.value.hostname }} 
+            --source {{ host_environment_dir }}/{{ item.value.hostname }}/{{ item.value.hostname }}-disk-{{ item.value.extra_disk_size }}.img 
+            --target vdb --persistent"
+    with_items: "{{ mounted_disks.results 
+                  | selectattr('stdout', 'equalto', 'vda') 
+                  | map(attribute='item') 
+                  | list }}" 
+
+  - name: Create SSH aliases
+    blockinfile:
+      path: "{{ lookup('env', 'HOME') }}/.ssh/config"
+      create: yes
+      marker: "# {mark} {{ network.name }} OpenShift cluster"
+      block: |
+        {% for key, value in cluster_nodes.items() %}
+        Host {{ value.ip }} {{ value.hostname }}
+            Hostname {{ value.ip }}
+            IdentityFile {{ host_environment_dir }}/id_rsa
+            PasswordAuthentication no
+            PreferredAuthentications publickey
+            ProxyCommand none
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
+            User {{ lookup('env', 'USER') }}
+
+        {% endfor %}
+
+  - name: Create environment ansible hosts file
+    copy:
+      dest: "{{ host_environment_dir }}/hosts"
+      content: |
+        [cluster]
+        {{ cluster_nodes.master.ip }}
+        {{ cluster_nodes.infra.ip }}
+        {{ cluster_nodes.compute.ip }}
+
+        [control]
+        {{ cluster_nodes.control.ip }}
+
+        [masters]
+        {{ cluster_nodes.master.ip }}
+
+        [infras]
+        {{ cluster_nodes.infra.ip }}
+
+        [computes]
+        {{ cluster_nodes.compute.ip }}
+
+- name: Set ansible groups
+  hosts: localhost
+  become: no
+  gather_facts: no
+  tags:
+  - always
+  tasks:
+  - name: Create host groups
+    add_host:
+      groups: "{{ item.value.groups | join(',') }}"
+      name: "{{ item.value.ip }}"
+      openshift_node_group_name: "{{ item.value.openshift_node_group_name | default('') }}"
+    changed_when: false
+    with_dict: "{{ cluster_nodes }} "
+
+- name: Configure RHSM, update/install common packages, configure ssh
+  hosts: control:masters:infras:computes
+  become: yes
+  gather_facts: no
+  tags:
+  - common  
+  tasks:
+  - name: Wait until hosts come up before proceeding
+    wait_for_connection:
+      sleep: 5
+      timeout: 100
+
+  - name: Copy ssh private key
+    copy:
+      src: "{{ host_environment_dir }}/id_rsa"
+      dest: "{{ item }}/.ssh/id_rsa"
+      mode: 0600
+      owner: "{{ lookup('env', 'USER') }}"
+      group: "{{ lookup('env', 'USER') }}"
+    with_items:
+    - "{{ lookup('env', 'HOME' }}"
+    - "/root"
+
+  - name: Copy ssh public key
+    copy:
+      src: "{{ host_environment_dir }}/id_rsa.pub"
+      dest: "{{ item }}/.ssh/id_rsa.pub"
+      mode: 0600
+    with_items:
+    - "{{ lookup('env', 'HOME' }}"
+    - "/root"
+
+  - name: Add key to authorized_keys
+    lineinfile: 
+      path: "{{ item }}/.ssh/authorized_keys"
+      line: "{{ lookup('file', host_environment_dir + '/id_rsa.pub') }}"
+    with_items:
+    - "{{ lookup('env', 'HOME' }}"
+    - "/root"
+
+  - name: Tune sshd_config
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      line: UseDNS no
+      regexp: "^UseDNS"
+
+  - name: Create ssh config file
+    copy:
+      content: |
+        {% for key, value in cluster_nodes.items() %}
+        Host {{ value.ip }} {{ value.hostname }}
+            Hostname {{ value.ip }}
+            IdentityFile {{ lookup('env', 'HOME')/.ssh/id_rsa
+            PasswordAuthentication no
+            PreferredAuthentications publickey
+            ProxyCommand none
+            StrictHostKeyChecking no
+            UserKnownHostsFile=/dev/null
+            User {{ lookup('env', 'USER') }}
+
+        {% endfor %}
+      dest: "{{ lookup('env', 'HOME')/.ssh/config"
+      mode: 0600
+      owner: "{{ lookup('env', 'USER') }}"
+      group: "{{ lookup('env', 'USER') }}"
+    notify: 
+    - Restart sshd
+
+  # Used because redhat_subscription is slow, so skipping it if possible is desirable
+  - name: Check if node is already registered to RHSM
+    tags:
+    - rhsm
+    command: subscription-manager status
+    register: rhsm_status
+    changed_when: false
+    failed_when: false
+
+  - name: Register to rhsm and attach pool if necessary
+    tags:
+    - rhsm
+    redhat_subscription:
+      username: "{{ lookup('env', 'RHSM_USER') }}"
+      password: "{{ lookup('env', 'RHSM_PASS') }}"
+      pool: "^{{ lookup('env', 'RHSM_POOL') }}$"
+      state: present
+    register: rhsm_result
+    until: rhsm_result is success
+    retries: 10
+    delay: 1
+    ignore_errors: yes
+    when: "'Current' not in rhsm_status.stdout"
+
+  # Using shell modules here because rhsm_repository is significantly slower
+  - name: Check enabled repositories
+    tags:
+    - rhsm
+    shell: subscription-manager repos --list-enabled | grep Enabled | wc -l
+    register: rhsm_enabled
+    changed_when: false
+
+  - name: Disable all RHSM repositories
+    tags:
+    - rhsm
+    command: subscription-manager repos --disable='*'
+    when: (rhsm_enabled.stdout | int) != (rhsm_repos | length)
+
+  - name: Enable OpenShift repositories
+    tags:
+    - rhsm
+    command: "subscription-manager repos --enable=\"{{ rhsm_repos | join('\" --enable=\"') }}\""
+    when: (rhsm_enabled.stdout | int) != (rhsm_repos | length)
+
+  - name: Update system packages
+    tags:
+    - yum_update
+    yum:
+      name: '*'
+      state: latest
+      exclude: docker
+    register: yum_update
+    retries: 5
+    delay: 1
+    until: yum_update.rc == 0
+
+  - name: Install packages
+    tags:
+    - yum_install
+    yum:
+      name: "{{ common_packages }}"
+      state: installed
+    register: yum_install
+    retries: 5
+    delay: 1
+    until: yum_install.rc == 0
+
+  - name: Reboot server on update
+    block:
+    - name: Reboot server
+      shell: sleep 10 && /sbin/shutdown -r now "System packages updated"
+      async: 300
+      poll: 0
+      become: true
+
+    - name: Wait for system to reboot
+      wait_for_connection:
+        connect_timeout: 20
+        sleep: 5
+        delay: 20
+        timeout: 300
+    when: yum_update.changed or yum_install.changed
+
+  handlers:
+  - name: Restart sshd
+    systemd:
+      name: sshd
+      state: restarted
+
+- name: Bootstrap control host
+  hosts: control
+  become: yes
+  gather_facts: false
+  tags:
+  - control
+  - bootstrap
+  tasks:
+  - name: Install packagaes
+    package:
+      name: "{{ item }}"
+    with_items:
+    - lvm2
+    - dnsmasq
+    - nfs-utils
+
+  - name: Create dnsmasq configuration
+    copy:
+      dest: /etc/dnsmasq.conf
+      content: |
+        # Don't use /etc/hosts
+        no-hosts
+        # Don't use /etc/resolv.conf
+        no-resolv
+        # Upstream DNS
+        server={{ cluster_nodes.control.dns }}
+        # Master API LBs
+        host-record=api.ocp.{{ network.suffix }},{{ cluster_nodes.master.ip }}
+        host-record=internal.ocp.{{ network.suffix }},{{ cluster_nodes.master.ip }}
+        # HAProxy Wildcard
+        address=/apps.ocp.{{ network.suffix }}/{{ cluster_nodes.infra.ip }}
+        # Subnet DNS records
+        {% for key, value in cluster_nodes.items() %}
+        host-record={{ value.hostname }},{{ value.ip }}
+        {% endfor %}
+    notify:
+    - Restart dnsmasq
+
+  - name: Start dnsmasq
+    systemd:
+      name: dnsmasq
+      state: started
+      enabled: true
+
+  handlers:
+  - name: Restart dnsmasq
+    systemd:
+      name: dnsmasq
+      state: restarted
+
+- name: Bootstrap cluster hosts
+  hosts: masters:infras:computes
+  become: yes
+  gather_facts: false
+  tags:
+  - cluster
+  - bootstrap
+  tasks:
+  - name: Configure NetworkManager to use bastion as dns
+    command: "nmcli 
+            con 
+            mod 'System eth0' 
+            ipv4.ignore-auto-dns yes 
+            ipv4.dns {{ cluster_nodes.control.ip }}"
+    notify:
+    - Restart NetworkManager
+
+  # Prevents cloud-init overwriting network configuration on boot
+  - name: Disable cloud-init network configuration
+    copy:
+      content: |
+        network: { config: disabled }
+      dest: /etc/cloud/cloud.cfg.d/99-disable-network-config.cfg
+
+  handlers:
+  - name: Restart NetworkManager
+    systemd:
+      name: NetworkManager
+      state: restarted
+
+- name: Install OpenShift prerequisites
+  vars:
+    ansible_become: true
+    ansible_username: "{{ lookup('env', 'USER') }}"
+  import_playbook: /usr/share/ansible/openshift-ansible/playbooks/prerequisites.yml
+  tags:
+  - prerequisites
+  - openshift-ansible
+
+- name: Install openshift
+  vars:
+    ansible_become: true
+    ansible_user: "{{ lookup('env', 'USER') }}"
+  import_playbook: "/usr/share/ansible/openshift-ansible/{{ start_from | default('playbooks/deploy_cluster.yml') }}"
+  tags:
+  - install
+  - openshift-ansible

@@ -1,0 +1,111 @@
+# VM Image configuration
+host_image:
+  # name: CentOS-7-x86_64-GenericCloud-1802.qcow2
+  # url: https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud-1802.qcow2
+  # checksum: 93613cd4fce8a4e5de793e49357853d96ee695f6842eca379d333ed3bc593cbb
+  # size: 15G
+  # os: centos
+  name: rhel-server-7.6-x86_64-kvm.qcow2
+  url: https://access.cdn.redhat.com/content/origin/files/sha256/3b/3b356c54d6927a7c16b10862e7b09f0d7ed0071a53f90c9f411f4e255c24f918/rhel-server-7.6-x86_64-kvm.qcow
+  checksum: 3b356c54d6927a7c16b10862e7b09f0d7ed0071a53f90c9f411f4e255c24f918
+  size: 15G
+  os: rhel
+
+# VM directory
+host_dir: "{{ lookup('env', 'HOME') }}/vms/hosts"
+
+# VM iso/boot disk directory
+image_dir: "{{ lookup('env', 'HOME') }}/vms/images"
+
+# RHSM Information
+rhsm_username: "{{ lookup('env','RHSM_USERNAME') }}"
+rhsm_password: "{{ lookup('env','RHSM_PASSWORD') }}"
+rhsm_pool: "{{ lookup('env','RHSM_POOL') }}"
+rhsm_repos:
+- rhel-7-server-rpms
+- rhel-7-server-extras-rpms
+- rhel-7-server-ose-3.11-rpms
+- rhel-7-server-ansible-2.6-rpms
+
+# Path to oc client
+oc_url: https://github.com/openshift/origin/releases/download/v3.11.0/openshift-origin-client-tools-v3.11.0-0cbc58b-linux-64bit.tar.gz
+
+# KVM Network Configuration - Shouldn't really need to modify this
+network:
+  name: lab.local
+  suffix: lab.local
+  forward_interface: wlo1
+  bridge_name: virbr1
+  mac: 52:54:00:1b:1c:da
+  network: 10.0.10.0
+  netmask: 255.255.255.0
+  broadcast: 10.0.10.255
+  gateway: 10.0.10.1
+  dhcp_start: 10.0.10.10
+  dhcp_end: 10.0.10.20
+
+# Directory where environment specific things go
+host_environment_dir: "{{ host_dir }}/{{ network.name }}"
+
+# Host configuration
+cluster_nodes:
+  control:
+    hostname: "con.{{ network.suffix }}"
+    ip: 10.0.10.10
+    mac: 52:54:00:7b:0a:15
+    dns: 1.1.1.1
+    memory: 4096
+    cpus: 1
+    extra_disk_size: 5G
+    groups:
+    - control
+  master:
+    hostname: "mas.{{ network.suffix }}"
+    ip: 10.0.10.11
+    mac: 52:54:00:4a:c3:b9
+    memory: 4096
+    cpus: 2
+    extra_disk_size: 5G
+    groups:
+    - masters
+    - etcd
+    - nodes
+    openshift_node_group_name: node-config-master
+  infra:
+    hostname: "inf.{{ network.suffix }}"
+    ip: 10.0.10.12
+    mac: 52:54:00:72:1c:71
+    memory: 8196
+    cpus: 1
+    extra_disk_size: 5G
+    groups:
+    - infras
+    - nodes
+    openshift_node_group_name: node-config-infra
+  compute:
+    hostname: "com.{{ network.suffix }}"
+    ip: 10.0.10.13
+    mac: 52:54:00:dc:eb:e1
+    memory: 2048
+    cpus: 1
+    extra_disk_size: 5G
+    groups:
+    - computes
+    - nodes
+    openshift_node_group_name: node-config-compute
+
+common_packages:
+- wget
+- git
+- net-tools
+- bind-utils
+- iptables-services
+- bridge-utils
+- bash-completion
+- kexec-tools
+- sos
+- psacct
+- vim
+- openshift-ansible
+- docker-1.13.1
+- httpd-tools

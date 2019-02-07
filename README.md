@@ -1,67 +1,44 @@
 # OpenShift KVM Lab
 
-This repository is used to get an OpenShift lab running quickly on a fedora machine with enough horsepower to support a small 4 node cluster via Ansible. My laptop has ~20GB of RAM and that is sufficient to run this with the defaults.  
-Since I am currently using Fedora 27, that is what this is written to run on, YMMV.
+This repository is used to get an OpenShift lab running quickly on a linux machine with enough horsepower to support a small 4 node cluster via Ansible. My laptop has 32GB of RAM and that is sufficient to run this with the defaults.
+
+Your machine must have passwordless sudo rights.
 
 ## Install Prerequisites
 
 ```bash
-[user@host openshift-kvm-lab]$ sudo dnf -y install ansible @virtualization
+sudo dnf -y install @virtualization python3-pip
+sudo pip3 install ansible==2.6.11
+sudo mkdir /usr/share/ansible
+cd /usr/share/ansible
+sudo git clone https://github.com/openshift/openshift-ansible.git
+cd openshift-ansible
+sudo git checkout release-3.11
 ```
 
 ## Deploying the Cluster
 
-### Set RHSM credentials if using RHEL
+### Set RHSM credentials
 ```bash
-[user@host openshift-kvm-lab]$ export RHSM_USERNAME=XXXXXXXXX
-[user@host openshift-kvm-lab]$ export RHSM_PASSWORD=XXXXXXXXX
-[user@host openshift-kvm-lab]$ export RHSM_POOL=XXXXXXXXX
+export RHSM_USERNAME=
+export RHSM_PASSWORD=
+export RHSM_POOL=
 ```
 
 ### Run deployment playbook
 
 ```bash
-[user@host openshift-kvm-lab]$ ansible-playbook -v deploy.yml | tee deploy.log
+[user@host openshift-kvm-lab]$ ./playbooks/deploy.yml | tee deploy.log
 ```
 
 ### Tearing it all down
 
 ```bash
-[user@host openshift-kvm-lab]$ ansible-playbook -v -i hosts playbooks/teardown.yml | tee teardown.log
+[user@host openshift-kvm-lab]$ ./playbooks/teardown.yml -e '@vars/infrastructure.yml'
 ```
 
-## Modifying OpenShift deployment
+# Tags
 
-The ansible host file used to deploy OpenShift can be found at [roles/ansible_host/files/hosts](roles/ansible_host/files/hosts). It can be used to modify the OpenShift installation.
+Tags can be used to control what parts of the deployment get run
 
-## SSH into machine
-
-```bash
-[user@host openshift-kvm-lab]$ cluster-ssh
-```
-
-## Run OpenShift Installer
-
-```bash
-[user@ans ~]$ ansible-playbook -v -i hosts openshift-ansible/playbooks/prerequisites.yml
-
-[user@ans ~]$ ansible-playbook -v -i hosts openshift-ansible/playbooks/deploy_cluster.yml
-```
-
-## Start Cluster
-A script ```~/bin/cluster-up``` that will start the cluster
-```bash
-[user@host ~]$ cluster-up
-```
-
-## Shutdown Cluster
-A script ```~/bin/cluster-down``` that will shutdown the cluster
-```bash
-[user@host ~]$ cluster-down
-```
-
-## TODO:
-
-* Allow deployment on CentOS of Origin
-* Deploy separate disks for docker storage
-* Generalize for arbitrary cluster versions
+## Running specific OpenShift playbooks

@@ -1,12 +1,33 @@
+#!/usr/local/bin/ansible-playbook
 ---
-- hosts: localhost
+- name: Create host groups
+  hosts: localhost
   become: no
   gather_facts: no
+  tasks:
+  - name: Create host groups
+    tags:
+    - rhsm
+    add_host:
+      groups: "{{ item.value.groups | join(',') }}"
+      name: "{{ item.value.ip }}"
+    changed_when: false
+    with_dict: "{{ cluster_nodes }} "
+    
+- hosts: control:masters:infras:computes
+  become: yes
+  gather_facts: no
+  tags:
+  - rhsm
+  tasks:
+  - name: Deregister from RHSM
+    redhat_subscription:
+      state: absent
+
+- hosts: localhost
+  gather_facts: no
   vars:
-    host_dir: "../.hosts"
-    host_image_dir: "../.images"
-  vars_files:
-  - ../vars/environment.yml
+    host_environment_dir: "{{ host_dir }}/{{ network.name }}"
   tasks:
   - name: Get current list of vms
     shell: virsh --connect=qemu:///system list
@@ -14,14 +35,18 @@
     register: vm_list
 
   - name: Stop vms
-    shell: "virsh --connect=qemu:///system destroy --domain {{ item.key }}"
-    when: vm_list.stdout is search(item.key)
-    with_dict: "{{ nodes }}"
+    shell: "virsh 
+            --connect=qemu:///system destroy 
+            --domain {{ item.value.hostname }}"
+    when: vm_list.stdout is search(item.value.hostname)
+    with_dict: "{{ cluster_nodes }}"
 
   - name: Undefine vms
-    shell: "virsh --connect=qemu:///system undefine --domain {{ item.key }}"
-    when: vm_list.stdout is search(item.key)
-    with_dict: "{{ nodes }}"
+    shell: "virsh 
+            --connect=qemu:///system undefine 
+            --domain {{ item.value.hostname }}"
+    when: vm_list.stdout is search(item.value.hostname)
+    with_dict: "{{ cluster_nodes }}"
 
   - name: Get current list of storage pools
     shell: virsh --connect=qemu:///system pool-list --all
@@ -29,14 +54,14 @@
     register: pool_list
 
   - name: Stop storage pools
-    shell: "virsh --connect=qemu:///system pool-destroy {{ item.key }}"
-    when: pool_list.stdout is search(item.key)
-    with_dict: "{{ nodes }}"
+    shell: "virsh --connect=qemu:///system pool-destroy {{ item.value.hostname }}"
+    when: pool_list.stdout is search(item.value.hostname)
+    with_dict: "{{ cluster_nodes }}"
 
   - name: Undefine storage pools
-    shell: "virsh --connect=qemu:///system pool-undefine {{ item.key }}"
-    when: pool_list.stdout is search(item.key)
-    with_dict: "{{ nodes }}"
+    shell: "virsh --connect=qemu:///system pool-undefine {{ item.value.hostname }}"
+    when: pool_list.stdout is search(item.value.hostname)
+    with_dict: "{{ cluster_nodes }}"
 
   - name: Get current list of networks
     shell: virsh --connect=qemu:///system net-list
@@ -52,25 +77,14 @@
   - name: Delete files
     file:
       state: absent
-      path: "{{ host_dir }}"
-
-- hosts: localhost
-  become: yes
-  gather_facts: no
-  vars_files:
-  - ../vars/environment.yml
-  tasks:
-  - name: Clean /etc/hosts
-    blockinfile:
-      state: absent
-      path: /etc/hosts
-      block: |
-        {{ nodes['ans.lab.local']['ip'] }} ans ans.lab.local
-        {{ nodes['mas.lab.local']['ip'] }} mas mas.lab.local
-        {{ nodes['inf.lab.local']['ip'] }} inf inf.lab.local
-        {{ nodes['app.lab.local']['ip'] }} app app.lab.local
-        {{ nodes['mas.lab.local']['ip'] }} ocp.lab.local
+      path: "{{ host_environment_dir }}"
   
+  - name: Delete SSH aliases
+    blockinfile:
+      path: "{{ lookup('env', 'HOME') }}/.ssh/config"
+      state: absent
+      marker: "# {{ network.name }} OpenShift cluster"
+
   - name: Remove SSH script
     file:
       state: absent

@@ -1,0 +1,65 @@
+TASK [etcd : Delete temporary directory] ***********************************************************************************************
+Thursday 17 January 2019  21:15:52 -0600 (0:00:00.242)       0:34:52.326 ****** 
+fatal: [10.0.10.11 -> localhost]: FAILED! => {
+    "changed": false,
+    "rc": 1
+}
+
+MSG:
+
+MODULE FAILURE
+
+
+MODULE_STDERR:
+
+sudo: a password is required
+
+
+
+NO MORE HOSTS LEFT *********************************************************************************************************************
+
+PLAY RECAP *****************************************************************************************************************************
+10.0.10.11                 : ok=222  changed=81   unreachable=0    failed=1   
+10.0.10.12                 : ok=148  changed=62   unreachable=0    failed=0   
+10.0.10.13                 : ok=148  changed=62   unreachable=0    failed=0   
+localhost                  : ok=23   changed=0    unreachable=0    failed=0   
+
+
+INSTALLER STATUS ***********************************************************************************************************************
+Initialization              : Complete (0:00:09)
+Health Check                : Complete (0:01:35)
+Node Bootstrap Preparation  : Complete (0:25:08)
+etcd Install                : In Progress (0:03:00)
+	This phase can be restarted by running: playbooks/openshift-etcd/config.yml
+Thursday 17 January 2019  21:15:52 -0600 (0:00:00.047)       0:34:52.373 ****** 
+=============================================================================== 
+openshift_node : install needed rpm(s) ---------------------------------------------------------------------------------------- 432.43s
+openshift_node : Install node, clients, and conntrack packages ---------------------------------------------------------------- 381.44s
+openshift_node : Install iSCSI storage plugin dependencies -------------------------------------------------------------------- 231.70s
+openshift_excluder : Install docker excluder - yum ---------------------------------------------------------------------------- 151.32s
+etcd : Install etcd ----------------------------------------------------------------------------------------------------------- 144.65s
+openshift_node : Check status of node image pre-pull -------------------------------------------------------------------------- 120.83s
+openshift_node : Install Ceph storage plugin dependencies --------------------------------------------------------------------- 101.03s
+Run health checks (install) - EL ----------------------------------------------------------------------------------------------- 94.82s
+openshift_node : Install dnsmasq ----------------------------------------------------------------------------------------------- 79.72s
+openshift_node : Install GlusterFS storage plugin dependencies ----------------------------------------------------------------- 76.11s
+Ensure openshift-ansible installer package deps are installed ------------------------------------------------------------------ 42.59s
+container_runtime : Install Docker --------------------------------------------------------------------------------------------- 23.98s
+openshift_node : Create credentials for registry auth -------------------------------------------------------------------------- 20.52s
+os_firewall : Install iptables packages ---------------------------------------------------------------------------------------- 19.28s
+container_runtime : Create credentials for oreg_url ---------------------------------------------------------------------------- 15.33s
+openshift_node : Install NFS storage plugin dependencies ----------------------------------------------------------------------- 14.75s
+openshift_repos : Ensure libselinux-python is installed ------------------------------------------------------------------------ 14.69s
+nickhammond.logrotate : nickhammond.logrotate | Install logrotate -------------------------------------------------------------- 14.58s
+etcd : Install openssl --------------------------------------------------------------------------------------------------------- 13.27s
+etcd : Install openssl --------------------------------------------------------------------------------------------------------- 13.20s
+Playbook run took 0 days, 0 hours, 34 minutes, 52 seconds
+
+
+Failure summary:
+
+
+  1. 10.0.10.11
+     Create etcd server certificates for etcd hosts
+     Delete temporary directory
+     MODULE FAILURE
